@@ -1,0 +1,8 @@
+# Power BI temporary files
+*.tmp
+*.lock
+
+# Python and Jupyter artifacts
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
