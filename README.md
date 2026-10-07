@@ -71,16 +71,16 @@ field-infrastructure-audit-analytics/
 ## System Architecture & Visual Reports
 
 ### 1. Tabular Star Schema Architecture (VertiPaq Import Model)
-![Kimball Star Schema Data Model](docs/screenshots/01_star_schema_model.png)
+![Kimball Star Schema Data Model](docs/Screenshots/01_star_schema_model.png)
 
 ### 2. Operational & Executive Quality Dashboard
-![Executive Overview Dashboard](docs/screenshots/02_executive_overview.png)
+![Executive Overview Dashboard](docs/Screenshots/02_executive_overview.png)
 
 ### 3. Regional Quality & Defect Distribution
-![Regional Quality Analysis](docs/screenshots/03_regional_quality.png)
+![Regional Quality Analysis](docs/Screenshots/03_regional_quality.png)
 
 ### 4. Technician & Vendor Operational SLA Performance
-![Operational and Vendor Performance](docs/screenshots/04_operational_details.png)
+![Operational and Vendor Performance](docs/Screenshots/04_operational_details.png)
 
 ---
 
@@ -262,4 +262,4 @@ The `.pbix` file is saved in **Import Mode** with embedded production data. It o
 | **Data Ingestion & Pipeline Orchestration** | **224114** (Data Analyst) | Engineered deterministic Python generation routines managing seed reproducibility, boundary conditions, and schema relationships. | `src/data_pipeline_and_eda.ipynb` |
 | **Exploratory Data Profiling & Audit** | **224114** (Data Analyst) | Automated in-pipeline data profiling for null distributions, status cardinality, and temporal boundaries. | `src/data_pipeline_and_eda.ipynb` (Cell 5) |
 | **Relational Schema Modeling** | **224114** / **261111** | Designed 3NF normalized tables with foreign keys and referential integrity constraints in MySQL 8.0. | `sql/01_schema_and_views.sql` |
-| **Dimensional Modeling & Decision Support** | **224114** / **261111** | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/screenshots/` |
+| **Dimensional Modeling & Decision Support** | **224114** / **261111** | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/Screenshots/` |
