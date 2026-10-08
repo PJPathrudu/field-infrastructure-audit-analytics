@@ -12,7 +12,7 @@ An end-to-end operational data quality governance and analytics pipeline designe
 
 * **Author:** Jogarao Pathrudu Pediredla
 * **GitHub Profile:** [@PJPathrudu](https://github.com/PJPathrudu)
-* **Project Role:** Lead Data Quality & Analytics Engineer
+* **Project Role:** Author & Data Quality Analytics Engineer
 * **Domain:** Telecommunications & Field Asset Quality Engineering
 
 ---
