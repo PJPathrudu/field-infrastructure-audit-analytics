@@ -66,16 +66,16 @@ field-infrastructure-audit-analytics/
 ## System Architecture & Visual Reports
 
 ### 1. Tabular Star Schema Architecture (VertiPaq Import Model)
-![Kimball Star Schema Data Model](docs/Screenshots/01_star_schema_model.png?v=2)
+![Kimball Star Schema Data Model](docs/Screenshots/01_star_schema_model.png?v=3)
 
 ### 2. Operational & Executive Quality Dashboard
-![Executive Overview Dashboard](docs/Screenshots/02_executive_overview.png?v=2)
+![Executive Overview Dashboard](docs/Screenshots/02_executive_overview.png?v=3)
 
 ### 3. Regional Quality & Defect Distribution
-![Regional Quality Analysis](docs/Screenshots/03_regional_quality.png?v=2)
+![Regional Quality Analysis](docs/Screenshots/03_regional_quality.png?v=3)
 
 ### 4. Technician & Vendor Operational SLA Performance
-![Operational and Vendor Performance](docs/Screenshots/04_operational_details.png?v=2)
+![Operational and Vendor Performance](docs/Screenshots/04_operational_details.png?v=3)
 
 ---
 
