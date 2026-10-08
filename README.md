@@ -51,7 +51,8 @@ field-infrastructure-audit-analytics/
 ├── pbix/
 │   └── Field_Audit_Analytics.pbix    # Tabular model with embedded cache
 ├── sql/
-│   └── 01_schema_and_views.sql       # DDL, bulk loading, and operational views
+│   ├── 01_schema_and_views.sql       # DDL, bulk loading, and operational views
+│   └── 02_data_quality_tests.sql     # Automated QA test suite (TC-01 to TC-07)
 ├── src/
 │   └── data_pipeline_and_eda.ipynb   # Deterministic generator & quality profiling
 ├── .gitignore
