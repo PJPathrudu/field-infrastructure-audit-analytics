@@ -1,8 +1,8 @@
 # Field Infrastructure Quality & Audit Performance Analytics
 
-[![Power BI Desktop](https://img.shields.io/badge/Power%20BI-Import%20Mode-F2C811?logo=powerbi&logoColor=black)](#semantic-model--key-dax-measures)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)](#database-schema--reporting-views)
-[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](#exploratory-data-analysis--validation-output)
+[![Power BI Desktop](https://img.shields.io/badge/Power%20BI-Import%20Mode-F2C811?logo=powerbi&logoColor=black)](#4-tabular-semantic-model--dax-metric-formulation)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)](#2-relational-database-modeling-mysql-3nf-schema)
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](#1-ingestion-profiling--exploratory-data-analysis-eda)
 
 An end-to-end operational data quality governance and analytics pipeline designed to standardize inspection workflows, enforce data validation gates, track defect distributions, and monitor contractor SLA performance across distributed field infrastructure.
 
@@ -15,12 +15,14 @@ An end-to-end operational data quality governance and analytics pipeline designe
 * **Project Role:** Lead Data Quality & Analytics Engineer
 * **Domain:** Telecommunications & Field Asset Quality Engineering
 
+---
+
 ## Project Overview
 
 This analytics pipeline models an end-to-end ICT quality verification and decision-support architecture across field engineering operations:
 1. **Business Systems Analysis (ANZSCO 261111):** Formulates operational business logic, normalizes fragmented compliance codes, and evaluates architectural trade-offs between flat reporting views and relational star schemas.
-2. **Quality Assurance Engineering (ANZSCO 263211):** Implements multi-tier test data gating, enforces defect taxonomies, monitors contractor turnaround latency, and evaluates SLA non-conformance.
-3. **Data Analytics & Modeling (ANZSCO 224114):** Ingests, profiles, and validates transactional data using Python, structures normalized 3NF MySQL schemas, and designs an import-mode Kimball star-schema semantic model in Power BI.
+2. **Data Analytics & Modeling (ANZSCO 224114):** Ingests, profiles, and validates transactional data using Python, structures normalized 3NF MySQL schemas, and designs an import-mode Kimball star-schema semantic model in Power BI.
+3. **Quality Assurance Engineering (ANZSCO 263211):** Implements multi-tier test data gating, enforces defect taxonomies, monitors contractor turnaround latency, and evaluates SLA non-conformance.
 
 ---
 
@@ -102,20 +104,50 @@ To ensure technical deliverables directly addressed operational bottlenecks, sys
 
 ---
 
-## Architectural Decision: Direct Table Ingestion vs. SQL View
+## 📊 Data Analytics, Dimensional Modeling & Analytical Framework (ANZSCO 224114)
 
-An operational reporting view (`vw_FieldAuditPerformance`) is provided in MySQL, but the Power BI semantic model ingests the normalized relational tables (`fact_audits`, `dim_regions`, `dim_technicians`) directly:
+To support operational decision-making, the pipeline executes an end-to-end analytics workflow comprising exploratory data profiling, normalized relational modeling, a Kimball star-schema semantic model, and advanced DAX metric engineering.
 
-* **Kimball Star Schema Integrity:** Direct ingestion maintains a clean 1:Many single-direction star schema rather than collapsing entities into a single de-normalized table.
-* **VertiPaq Memory Efficiency:** Storing text attributes (`TechnicianName`, `RegionName`) in shallow dimension tables while the fact table holds compact integer foreign keys optimizes dictionary encoding and minimizes cache overhead.
-* **Role-Playing Date Dimensions:** Allows `fact_audits` to maintain an active relationship on `AuditDate` and an inactive relationship on `ScheduledDate` against `dim_date`, enabling dynamic time intelligence via `USERELATIONSHIP`.
-* **Separation of Concerns:** `vw_FieldAuditPerformance` serves ad-hoc SQL users and flat-file exports, while the Power BI model serves multi-dimensional interactive analytics.
+### 1. Ingestion Profiling & Exploratory Data Analysis (EDA)
+
+The Python profiling routine in `src/data_pipeline_and_eda.ipynb` evaluates distribution characteristics, null frequencies, and operational boundaries across all ingested records prior to database staging:
+
+<details>
+<summary>Click to expand EDA Profiling Log Output</summary>
+
+```text
+=== FACT AUDITS PROFILE ===
+Total Ingested Rows: 600
+Test Records Identified: 3
+
+--- Raw Status Distribution ---
+PASS        279
+PASSED      129
+FAIL         88
+FAILED       40
+REJECTED     33
+PENDING      31
+
+--- Defect Distribution ---
+None                  439
+Loose Connector        54
+Signal Attenuation     44
+Grounding Missing      36
+Cable Sagging          27
+
+--- Date Boundary Verification ---
+Scheduled: 2025-10-02 to 2026-07-28
+Executed:  2025-10-04 to 2026-08-01
+Pending Audits (Null Execution): 31
+```
+
+</details>
 
 ---
 
-## Database Schema & Reporting Views
+### 2. Relational Database Modeling (MySQL 3NF Schema)
 
-Implemented in MySQL 8.0 (`FieldAuditDB`):
+Implemented in MySQL 8.0 (`FieldAuditDB`) enforcing primary key constraints, foreign key referential integrity, and data type sanitization:
 
 * **`Dim_Regions`:** `RegionID` (PK), `RegionName`, `Territory`.
 * **`Dim_Technicians`:** `TechnicianID` (PK), `TechnicianName`, `VendorName`.
@@ -154,19 +186,27 @@ INNER JOIN Dim_Technicians t ON a.TechnicianID = t.TechnicianID
 INNER JOIN Dim_Regions r ON a.RegionID = r.RegionID
 WHERE a.IsTestRecord = 0;
 ```
-*(See full implementation in [`sql/01_schema_and_views.sql`](sql/01_schema_and_views.sql))*
+*(See full schema and DDL scripts in [`sql/01_schema_and_views.sql`](sql/01_schema_and_views.sql))*
 
 ---
 
-## Semantic Model & Key DAX Measures
+### 3. Architectural Evaluation: Direct Star Schema vs. Flat View
 
-### Model Configuration
+While `vw_FieldAuditPerformance` serves ad-hoc SQL extract queries, the Power BI analytical semantic model directly ingests normalized relational tables (`fact_audits`, `dim_regions`, `dim_technicians`):
 
-* **Joins:** `dim_regions` (1:*, active), `dim_technicians` (1:*, active), `dim_date` on `AuditDate` (1:*, active), and `dim_date` on `ScheduledDate` (1:*, inactive).
-* **Date Table:** `dim_date` is marked as an official Date Table.
-* **Hygiene:** Foreign keys (`RegionID`, `TechnicianID`) are hidden in report view, and ID columns are set to **Don't Summarize**.
+* **Kimball Star Schema Integrity:** Preserves a clean 1:Many single-direction star schema rather than flattening entities into a single de-normalized table.
+* **VertiPaq Memory Optimization:** Isolating categorical strings (`TechnicianName`, `RegionName`) into shallow dimension tables while maintaining integer foreign keys in the fact table optimizes dictionary encoding and run-length cache compression.
+* **Role-Playing Date Modeling:** Enables `fact_audits` to maintain an active relationship on `AuditDate` and an inactive relationship on `ScheduledDate` against `dim_date`, facilitating dynamic bi-temporal analytics.
 
-### Core DAX (`_Measures`)
+---
+
+### 4. Tabular Semantic Model & DAX Metric Formulation
+
+* **Relationship Topologies:** `dim_regions` (1:*, active), `dim_technicians` (1:*, active), `dim_date` on `AuditDate` (1:*, active), and `dim_date` on `ScheduledDate` (1:*, inactive).
+* **Enterprise Date Table:** `dim_date` configured as the official contiguous Date Table.
+* **Metadata Hygiene:** Foreign key integers hidden from report canvas; business measures consolidated in a dedicated `_Measures` table.
+
+#### Core Analytical Measures:
 
 ```dax
 Compliance Rate % = 
@@ -196,57 +236,6 @@ CALCULATE(
 ```dax
 Scheduled vs Executed Variance = [Audits Scheduled] - [Total Audits]
 ```
-
----
-
-## Exploratory Data Analysis & Validation Output
-
-The profiling routine in `src/data_pipeline_and_eda.ipynb` validates data quality distributions before database ingestion:
-
-<details>
-<summary>Click to expand EDA Output Log</summary>
-
-```text
-=== FACT AUDITS PROFILE ===
-Total Ingested Rows: 600
-Test Records Identified: 3
-
---- Raw Status Distribution ---
-PASS        279
-PASSED      129
-FAIL         88
-FAILED       40
-REJECTED     33
-PENDING      31
-
---- Defect Distribution ---
-None                  439
-Loose Connector        54
-Signal Attenuation     44
-Grounding Missing      36
-Cable Sagging          27
-
---- Date Boundary Verification ---
-Scheduled: 2025-10-02 to 2026-07-28
-Executed:  2025-10-04 to 2026-08-01
-Pending Audits (Null Execution): 31
-```
-
-</details>
-
----
-
-## Reproduction Guide
-
-### Portable Evaluation (Offline Mode)
-
-The `.pbix` file is saved in **Import Mode** with embedded production data. It opens in Power BI Desktop without requiring an active MySQL connection.
-
-### Full Pipeline Execution
-
-1. **Generate Data:** Run all cells in `src/data_pipeline_and_eda.ipynb` to output the CSV files.
-2. **Ingest to MySQL:** Execute `sql/01_schema_and_views.sql` to build the tables, load the data, and compile the view.
-3. **Refresh Report:** Open `pbix/Field_Audit_Analytics.pbix`, configure Data Source Settings to point to your MySQL instance, and click **Refresh**.
 
 ---
 
@@ -304,15 +293,30 @@ To demonstrate operational quality governance, recurring field non-compliances a
 
 ---
 
+## Reproduction Guide
+
+### Portable Evaluation (Offline Mode)
+
+The `.pbix` file is saved in **Import Mode** with embedded production data. It opens in Power BI Desktop without requiring an active MySQL connection.
+
+### Full Pipeline Execution
+
+1. **Generate Data:** Run all cells in `src/data_pipeline_and_eda.ipynb` to output the CSV files.
+2. **Ingest to MySQL:** Execute `sql/01_schema_and_views.sql` to build the tables, load the data, and compile the view.
+3. **Execute Test Matrix:** Run `sql/02_data_quality_tests.sql` to verify database validation pass states.
+4. **Refresh Report:** Open `pbix/Field_Audit_Analytics.pbix`, configure Data Source Settings to point to your MySQL instance, and click **Refresh**.
+
+---
+
 ## 🎯 Appendix: Professional Competency & Standards Alignment
 
-| **Core Duty Domain** | **Target ANZSCO** | **Project Implementation** | **Evidence Artifact** |
+| **Core Duty Domain** | **Alignment Domain** | **Project Implementation** | **Evidence Artifact** |
 | :--- | :--- | :--- | :--- |
-| **Requirements Elicitation & Business Rules** | **261111** (ICT BA) | Defined compliance rules, turnaround metrics, and defect taxonomies to normalize operational field reporting. | `README.md` / `sql/01_schema_and_views.sql` |
-| **System & Solution Architecture** | **261111** (ICT BA) | Evaluated architectural trade-offs between Direct Star-Schema Ingestion vs. Flat Database Views for analytical workloads. | `README.md` (Architectural Decision) |
-| **Defect Lifecycle & Triage Governance** | **263211** (ICT QA) | Built quality gating rules, test record segregation (`IsTestRecord = 0`), and standardized defect category tracking. | `sql/01_schema_and_views.sql` |
-| **SLA & Quality Metric Formulation** | **263211** (ICT QA) | Formulated DAX metrics for Compliance Rate %, SLA execution turnaround lag, and schedule variances. | `pbix/Field_Audit_Analytics.pbix` (`_Measures`) |
-| **Data Ingestion & Pipeline Orchestration** | **224114** (Data Analyst) | Engineered deterministic Python generation routines managing seed reproducibility, boundary conditions, and schema relationships. | `src/data_pipeline_and_eda.ipynb` |
-| **Exploratory Data Profiling & Audit** | **224114** (Data Analyst) | Automated in-pipeline data profiling for null distributions, status cardinality, and temporal boundaries. | `src/data_pipeline_and_eda.ipynb` (Cell 5) |
-| **Relational Schema Modeling** | **224114** / **261111** | Designed 3NF normalized tables with foreign keys and referential integrity constraints in MySQL 8.0. | `sql/01_schema_and_views.sql` |
-| **Dimensional Modeling & Decision Support** | **224114** / **261111** | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/Screenshots/` |
+| **Requirements Elicitation & Business Rules** | Business Systems Analysis (261111) | Defined compliance rules, turnaround metrics, and defect taxonomies to normalize operational field reporting. | `README.md` / `sql/01_schema_and_views.sql` |
+| **System & Solution Architecture** | Solution Architecture (261111) | Evaluated architectural trade-offs between Direct Star-Schema Ingestion vs. Flat Database Views for analytical workloads. | `README.md` (Architectural Decision) |
+| **Defect Lifecycle & Triage Governance** | Quality Engineering (263211) | Built quality gating rules, test record segregation (`IsTestRecord = 0`), and standardized defect category tracking. | `sql/01_schema_and_views.sql` |
+| **SLA & Quality Metric Formulation** | Quality Assurance (263211) | Formulated DAX metrics for Compliance Rate %, SLA execution turnaround lag, and schedule variances. | `pbix/Field_Audit_Analytics.pbix` (`_Measures`) |
+| **Data Ingestion & Pipeline Orchestration** | Data Analytics (224114) | Engineered deterministic Python generation routines managing seed reproducibility, boundary conditions, and schema relationships. | `src/data_pipeline_and_eda.ipynb` |
+| **Exploratory Data Profiling & Audit** | Data Analytics (224114) | Automated in-pipeline data profiling for null distributions, status cardinality, and temporal boundaries. | `src/data_pipeline_and_eda.ipynb` (Cell 5) |
+| **Relational Schema Modeling** | Data Modeling (224114 / 261111) | Designed 3NF normalized tables with foreign keys and referential integrity constraints in MySQL 8.0. | `sql/01_schema_and_views.sql` |
+| **Dimensional Modeling & Decision Support** | BI & Analytics (224114 / 261111) | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/Screenshots/` |
