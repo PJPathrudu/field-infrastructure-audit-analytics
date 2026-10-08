@@ -47,9 +47,9 @@ field-infrastructure-audit-analytics/
 ├── docs/
 │   └── Screenshots/                  # Architecture & visual reporting evidence
 │       ├── 01_star_schema_model.png   # Tabular star schema model relationships
-│       ├── 02_executive_overview.png  # Executive KPI & monthly trend dashboard
-│       ├── 03_regional_quality.png    # Regional compliance & defect category matrix
-│       └── 04_operational_details.png # Vendor compliance & turnaround latency details
+│       ├── 02_executive_overview_dashboard.png  # Executive KPI & monthly trend dashboard
+│       ├── 03_regional_quality_dashboard.png    # Regional compliance & defect category matrix
+│       └── 04_operational_details_dashboard.png # Vendor compliance & turnaround latency details
 ├── pbix/
 │   └── Field_Audit_Analytics.pbix    # Tabular model with embedded cache
 ├── sql/
@@ -66,16 +66,16 @@ field-infrastructure-audit-analytics/
 ## System Architecture & Visual Reports
 
 ### 1. Tabular Star Schema Architecture (VertiPaq Import Model)
-![Kimball Star Schema Data Model](docs/Screenshots/01_star_schema_model.png?v=3)
+![Kimball Star Schema Data Model](docs/Screenshots/01_star_schema_model.png)
 
 ### 2. Operational & Executive Quality Dashboard
-![Executive Overview Dashboard](docs/Screenshots/02_executive_overview.png?v=3)
+![Executive Overview Dashboard](docs/Screenshots/02_executive_overview_dashboard.png)
 
 ### 3. Regional Quality & Defect Distribution
-![Regional Quality Analysis](docs/Screenshots/03_regional_quality.png?v=3)
+![Regional Quality Analysis](docs/Screenshots/03_regional_quality_dashboard.png)
 
 ### 4. Technician & Vendor Operational SLA Performance
-![Operational and Vendor Performance](docs/Screenshots/04_operational_details.png?v=3)
+![Operational and Vendor Performance](docs/Screenshots/04_operational_details_dashboard.png)
 
 ---
 
