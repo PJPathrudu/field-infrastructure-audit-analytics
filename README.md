@@ -1,13 +1,10 @@
 # Field Infrastructure Quality & Audit Performance Analytics
 
-[![ANZSCO: 224114](https://img.shields.io/badge/ANZSCO-224114%20(Data%20Analyst)-blue.svg)](#target-anzsco-competency-mapping)
-[![ANZSCO: 263211](https://img.shields.io/badge/ANZSCO-263211%20(ICT%20QA%20Engineer)-green.svg)](#target-anzsco-competency-mapping)
-[![ANZSCO: 261111](https://img.shields.io/badge/ANZSCO-261111%20(ICT%20Business%20Analyst)-orange.svg)](#target-anzsco-competency-mapping)
 [![Power BI Desktop](https://img.shields.io/badge/Power%20BI-Import%20Mode-F2C811?logo=powerbi&logoColor=black)](#semantic-model--key-dax-measures)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?logo=mysql&logoColor=white)](#database-schema--reporting-views)
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](#exploratory-data-analysis--validation-output)
 
-An end-to-end telecommunications field audit analytics and quality governance pipeline engineered with Python data generation, MySQL relational schemas, and a Kimball star-schema Power BI semantic model.
+An end-to-end operational data quality governance and analytics pipeline designed to standardize inspection workflows, enforce data validation gates, track defect distributions, and monitor contractor SLA performance across distributed field infrastructure.
 
 ---
 
@@ -15,13 +12,8 @@ An end-to-end telecommunications field audit analytics and quality governance pi
 
 * **Author:** Jogarao Pathrudu Pediredla
 * **GitHub Profile:** [@PJPathrudu](https://github.com/PJPathrudu)
-* **Target ANZSCO Occupations:** 
-  * **224114** — Data Analyst
-  * **263211** — ICT Quality Assurance Engineer
-  * **261111** — ICT Business Analyst
-* **Assessment Framework:** ACS RPL Skills Assessment Evidence (Category 2 — Attributed Work)
-
----
+* **Project Role:** Lead Data Quality & Analytics Engineer
+* **Domain:** Telecommunications & Field Asset Quality Engineering
 
 ## Project Overview
 
@@ -51,7 +43,7 @@ field-infrastructure-audit-analytics/
 │   ├── dim_technicians.csv           # Technician & vendor dimension (5 records)
 │   └── fact_audits.csv               # Audit transactions (600 records)
 ├── docs/
-│   └── screenshots/                  # Architecture & visual reporting evidence
+│   └── Screenshots/                  # Architecture & visual reporting evidence
 │       ├── 01_star_schema_model.png   # Tabular star schema model relationships
 │       ├── 02_executive_overview.png  # Executive KPI & monthly trend dashboard
 │       ├── 03_regional_quality.png    # Regional compliance & defect category matrix
@@ -84,22 +76,28 @@ field-infrastructure-audit-analytics/
 
 ---
 
-## Business Requirements & Process Analysis (ANZSCO 261111 Alignment)
+## 📋 Business Analysis & Functional Requirements (ANZSCO 261111)
 
-* **Business Problem Definition:** Field audits across regional telecommunication nodes suffered from disparate status codes recorded across contractor systems (`PASS`, `PASSED`, `FAIL`, `FAILED`, `REJECTED`, `PENDING`), preventing centralized SLA monitoring.
-* **Functional Requirements (FR):**
-  * *FR-01 (Normalization):* Classify disparate operational statuses into binary compliance states (`Compliant` vs. `Non-Compliant`), isolating unexecuted audits into a `Pending Review` queue.
-  * *FR-02 (Turnaround Calculation):* Measure turnaround latency as `AuditDate - ScheduledDate`. Audits pending completion enforce `NULL` execution states to protect operational averages.
-  * *FR-03 (Defect Categorization):* Enforce mandatory defect classification (*Grounding Missing*, *Loose Connector*, *Cable Sagging*, *Signal Attenuation*) on non-compliant audits, while defaulting passed inspections to `No Defect`.
-* **Architectural Evaluation:** Analyzed flat database views against normalized dimension tables. Designed a Kimball star schema to optimize VertiPaq dictionary encoding, maintain single-direction relationship filtering, and support dynamic date analysis.
+To ensure technical deliverables directly addressed operational bottlenecks, system architecture decisions were driven by formal business rules, functional scoping, and traceability modeling.
 
----
+### 1. Business Problem Definition & Operational Objectives
+* **Operational Context:** Decentralized field audits resulted in unmonitored contractor SLA slippage, inconsistent pass-rate thresholds across inspection territories, and zero visibility into recurring defect distributions.
+* **Core Objective:** Design and deploy a centralized audit analytics architecture to enforce contractor compliance SLAs ($\ge 85\%$), track completion turnaround latency, and provide executive visibility into regional equipment failure modes.
 
-## Quality Engineering & Defect Governance (ANZSCO 263211 Alignment)
+### 2. Business Rules & Functional Specifications
+* **BR-01 (Turnaround SLA Threshold):** Turnaround latency is calculated as elapsed days between `ScheduledDate` and `AuditDate`. Any completed inspection exceeding 5 calendar days is flagged as an SLA violation.
+* **BR-02 (Compliance Determination):** An audit is classified as compliant only when `StatusCode = 'PASS'`. Non-compliant audits (`FAIL` or `REJECTED`) require mandatory defect categorization to enable root-cause attribution.
+* **FR-01 (Bi-Temporal Calendar Filtering):** Operations leadership requires filtering metrics either by inspection execution date (`AuditDate`) or planned inspection date (`ScheduledDate`) without introducing circular dependencies into the dimensional model.
+* **FR-02 (Regional Performance Drill-Down):** Regional managers require dynamic filtering from state-level compliance aggregates down to individual contractor and technician defect ratios.
 
-* **Inspection Gating & Test Data Segregation:** Automated validation flags test entries (`IsTestRecord = 1`) to ensure testing noise does not impact operational metrics.
-* **Defect Lifecycle & Severity Profiling:** Standardized defect taxonomies enable defect density tracking across geographic territories (Coastal, Inland, Metro, Regional) to highlight infrastructure risk zones.
-* **Contractor SLA Performance Auditing:** Calculated execution turnaround delays against scheduled delivery windows, monitoring contractor compliance rates across service partners (Delta Services, Zenith Connect, Apex Infra).
+### 3. Requirements Traceability Matrix (RTM)
+
+| Req ID | Business Need / Operational Goal | System Specification | Technical Implementation | Business Decision Enabled |
+| :--- | :--- | :--- | :--- | :--- |
+| **REQ-01** | Identify contractors breaching contractual turnarounds | Calculate execution turnaround latency per completed audit | SQL `DATEDIFF` logic + DAX `[Avg Turnaround Days]` | Enforce contractual SLA penalties; reassign delayed audit routes |
+| **REQ-02** | Prevent skewed executive reporting from pipeline test data | Isolate automated validation records from production KPIs | SQL View filter `WHERE IsTestRecord = 0` | Accurate executive KPI auditing ($N=597$ verified audits) |
+| **REQ-03** | Correlate completed field audits against scheduled backlog | Support multiple date vectors against a single calendar table | Inactive relationship on `ScheduledDate` via DAX `USERELATIONSHIP` | Identify scheduling backlogs vs. physical field bottlenecks |
+| **REQ-04** | Monitor critical field safety defect concentrations | Aggregate and rank failure modes across regions | Standardized defect taxonomy + Power BI Pareto visual | Direct targeted preventive maintenance to high-risk territories |
 
 ---
 
@@ -251,20 +249,6 @@ The `.pbix` file is saved in **Import Mode** with embedded production data. It o
 
 ---
 
-## Target ANZSCO Competency Mapping
-
-| **Core Duty Domain** | **Target ANZSCO** | **Project Implementation** | **Evidence Artifact** |
-| :--- | :--- | :--- | :--- |
-| **Requirements Elicitation & Business Rules** | **261111** (ICT BA) | Defined compliance rules, turnaround metrics, and defect taxonomies to normalize operational field reporting. | `README.md` / `sql/01_schema_and_views.sql` |
-| **System & Solution Architecture** | **261111** (ICT BA) | Evaluated architectural trade-offs between Direct Star-Schema Ingestion vs. Flat Database Views for analytical workloads. | `README.md` (Architectural Decision) |
-| **Defect Lifecycle & Triage Governance** | **263211** (ICT QA) | Built quality gating rules, test record segregation (`IsTestRecord = 0`), and standardized defect category tracking. | `sql/01_schema_and_views.sql` |
-| **SLA & Quality Metric Formulation** | **263211** (ICT QA) | Formulated DAX metrics for Compliance Rate %, SLA execution turnaround lag, and schedule variances. | `pbix/Field_Audit_Analytics.pbix` (`_Measures`) |
-| **Data Ingestion & Pipeline Orchestration** | **224114** (Data Analyst) | Engineered deterministic Python generation routines managing seed reproducibility, boundary conditions, and schema relationships. | `src/data_pipeline_and_eda.ipynb` |
-| **Exploratory Data Profiling & Audit** | **224114** (Data Analyst) | Automated in-pipeline data profiling for null distributions, status cardinality, and temporal boundaries. | `src/data_pipeline_and_eda.ipynb` (Cell 5) |
-| **Relational Schema Modeling** | **224114** / **261111** | Designed 3NF normalized tables with foreign keys and referential integrity constraints in MySQL 8.0. | `sql/01_schema_and_views.sql` |
-| **Dimensional Modeling & Decision Support** | **224114** / **261111** | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/Screenshots/` |
----
-
 ## 🧪 Quality Engineering & Data Validation Lifecycle (ANZSCO 263211)
 
 To ensure enterprise-grade data reliability, the pipeline enforces a multi-tier Quality Assurance framework that governs data ingestion, schema enforcement, boundary testing, and defect lifecycle management.
@@ -316,3 +300,18 @@ To demonstrate operational quality governance, recurring field non-compliances a
 * **Corrective & Preventive Action (CAPA):**
   * *Immediate Action:* Deployed mandatory digital checklist gating in the field capture form requiring torque verification photo upload.
   * *Preventive Monitoring:* Built dynamic regional turnaround tracking in Power BI (`[Avg Turnaround Days]`) to trigger automated alerts whenever regional latency exceeds 4.5 days.
+
+---
+
+## 🎯 Appendix: Professional Competency & Standards Alignment
+
+| **Core Duty Domain** | **Target ANZSCO** | **Project Implementation** | **Evidence Artifact** |
+| :--- | :--- | :--- | :--- |
+| **Requirements Elicitation & Business Rules** | **261111** (ICT BA) | Defined compliance rules, turnaround metrics, and defect taxonomies to normalize operational field reporting. | `README.md` / `sql/01_schema_and_views.sql` |
+| **System & Solution Architecture** | **261111** (ICT BA) | Evaluated architectural trade-offs between Direct Star-Schema Ingestion vs. Flat Database Views for analytical workloads. | `README.md` (Architectural Decision) |
+| **Defect Lifecycle & Triage Governance** | **263211** (ICT QA) | Built quality gating rules, test record segregation (`IsTestRecord = 0`), and standardized defect category tracking. | `sql/01_schema_and_views.sql` |
+| **SLA & Quality Metric Formulation** | **263211** (ICT QA) | Formulated DAX metrics for Compliance Rate %, SLA execution turnaround lag, and schedule variances. | `pbix/Field_Audit_Analytics.pbix` (`_Measures`) |
+| **Data Ingestion & Pipeline Orchestration** | **224114** (Data Analyst) | Engineered deterministic Python generation routines managing seed reproducibility, boundary conditions, and schema relationships. | `src/data_pipeline_and_eda.ipynb` |
+| **Exploratory Data Profiling & Audit** | **224114** (Data Analyst) | Automated in-pipeline data profiling for null distributions, status cardinality, and temporal boundaries. | `src/data_pipeline_and_eda.ipynb` (Cell 5) |
+| **Relational Schema Modeling** | **224114** / **261111** | Designed 3NF normalized tables with foreign keys and referential integrity constraints in MySQL 8.0. | `sql/01_schema_and_views.sql` |
+| **Dimensional Modeling & Decision Support** | **224114** / **261111** | Designed Kimball star schema with role-playing date relationships and synchronized executive KPI dashboards. | `docs/Screenshots/` |
