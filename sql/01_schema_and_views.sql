@@ -30,8 +30,7 @@ CREATE TABLE Fact_Audits (
 SET GLOBAL local_infile = 1;
 SHOW GLOBAL VARIABLES LIKE 'local_infile';
 
-
-LOAD DATA LOCAL INFILE 'C:/ProgramData/MySQL/MySQL Server 8.0/Uploads/fact_audits.csv'
+LOAD DATA LOCAL INFILE 'C:/Users/HP/OneDrive/Desktop/field-infrastructure-audit-analytics/data/fact_audits.csv'
 INTO TABLE Fact_Audits
 FIELDS TERMINATED BY ',' 
 OPTIONALLY ENCLOSED BY '"'
