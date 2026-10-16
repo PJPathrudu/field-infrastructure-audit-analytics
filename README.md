@@ -175,7 +175,7 @@ INNER JOIN Dim_Technicians t ON a.TechnicianID = t.TechnicianID
 INNER JOIN Dim_Regions r ON a.RegionID = r.RegionID
 WHERE a.IsTestRecord = 0;
 ```
-*(See full implementation in [`01_schema_and_views.sql`](01_schema_and_views.sql))*
+*(See full implementation in [`sql/01_schema_and_views.sql`](sql/01_schema_and_views.sql))*
 
 ---
 
@@ -299,6 +299,7 @@ assert failed_audits['DefectCategory'].notna().all(), "Non-compliant audit missi
 * **BI Platform:** Power BI Desktop (Windows) with MySQL Connector/NET installed.
 
 ### Execution Sequence
+Run the terminal commands below from the repository root (`field-infrastructure-audit-analytics/`). When running the notebook, its CSV files are exported to the notebook kernel's current working directory; copy those files into `data/` before executing the SQL loader.
 1. **Generate Data & Run Assertions:**
    * Open `src/data_pipeline_and_eda.ipynb` and execute all cells.
    * Confirm Gate 1 pre-ingestion assertions pass in Cell 6 before Cell 7 exports the sanitized CSV files (`dim_regions.csv`, `dim_technicians.csv`, `fact_audits.csv`).
@@ -308,11 +309,11 @@ assert failed_audits['DefectCategory'].notna().all(), "Non-compliant audit missi
    * **Warning — destructive demo reset:** The schema script drops and recreates `Fact_Audits`, `Dim_Technicians`, and `Dim_Regions`, deleting their existing data. Run it only against the disposable demonstration database after preserving any required data. It is not a non-destructive production refresh procedure.
    * Execute schema creation and data loading (dimensions load prior to facts):
      ```bash
-     mysql --local-infile=1 -u root -p < 01_schema_and_views.sql
+     mysql --local-infile=1 -u root -p < sql/01_schema_and_views.sql
      ```
    * Execute the regression test suite:
      ```bash
-     mysql -u root -p < 02_data_quality_tests.sql
+     mysql -u root -p < sql/02_data_quality_tests.sql
      ```
    * Confirm test cases `TC-01` through `TC-07` all return `PASS`.
 3. **Open & Refresh Power BI Model:**
