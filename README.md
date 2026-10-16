@@ -28,7 +28,7 @@ An end-to-end operational data quality governance, relational data modeling, and
 This analytics platform bridges three core computing domains across simulated field operations:
 1. **Business Systems Analysis (ANZSCO 261111):** Formulates operational business logic, normalizes fragmented inspection codes, and evaluates architectural trade-offs between flat reporting views and relational star schemas.
 2. **Quality Assurance Engineering (ANZSCO 263211):** Implements automated Python assertion gates, establishes relational constraints, executes automated SQL regression suites (TC-01 to TC-07), and models diagnostic 5-Whys Root Cause Analysis.
-3. **Data Analytics & Modeling (ANZSCO 224114):** Ingests, profiles, and validates transactional data using Python, structures normalized 3NF MySQL schemas, and designs an import-mode Kimball star-schema semantic model in Power BI.
+3. **Data Analytics & Modeling (ANZSCO 224114):** Generates, profiles, and validates synthetic transactional data using Python, implements MySQL fact and dimension tables, and designs an import-mode Kimball star-schema semantic model in Power BI.
 
 ---
 
@@ -36,7 +36,7 @@ This analytics platform bridges three core computing domains across simulated fi
 
 All transactional records are synthetically generated using Python (`random.seed(42)` and `numpy.random.seed(42)`) to simulate field audit lifecycles without using proprietary corporate data:
 
-* **Deterministic Reproduction:** Fixed pseudo-random seeds guarantee identical row outputs when evaluated in Python 3.12 environments.
+* **Reproducibility:** The supplied notebook uses fixed pseudo-random seeds (`random.seed(42)` and `numpy.random.seed(42)`). Re-execution reproduced the reviewed dataset in the verification environment. Record the tested Python/package versions and final CSV checksums to identify a reproducible release; identical output across every environment is not guaranteed.
 * **Operational Integrity:** Audits marked `PENDING` strictly enforce `NULL` execution dates, while completed audits enforce turnaround delays between 0 and 7 days.
 * **Quality Assurance Test Cases:** Embeds 3 test records (`IsTestRecord = 1`) to validate downstream data cleansing rules, sanitization gates, and filter integrity.
 
@@ -58,7 +58,7 @@ Across the production population ($N = 597$ verified non-test audits), the platf
 
 > **Population Reconciliation Note:**
 > * **Raw Ingested Dataset ($N = 600$):** 408 compliant, 161 non-compliant (defective), and 31 pending records.
-> * **Production Reporting Population ($N = 597$):** Excludes 3 flagged test records (`IsTestRecord = 1`). One test record (AuditID: 1045) carried a `FAIL` status; filtering test records yields **406 compliant audits**, **160 defect audits**, and **31 pending reviews** ($406 / 597 = \mathbf{68.01\%}$ compliance).
+> * **Production Reporting Population ($N = 597$):** Excludes 3 flagged test records (`IsTestRecord = 1`): AuditID **1012** has `FAIL` status, while AuditIDs **1045** and **1088** have `PASS` status. Filtering these records yields **406 compliant audits**, **160 defect audits**, and **31 pending reviews** ($406 / 597 = \mathbf{68.01\%}$ compliance).
 
 ---
 
@@ -76,7 +76,7 @@ field-infrastructure-audit-analytics/
 │       ├── 01_star_schema_model.png   # Tabular star schema model relationships
 │       ├── 02_executive_overview_dashboard.png # Executive KPI overview (68.01% compliance / 160 defects)
 │       ├── 03_regional_quality_dashboard.png    # Regional compliance & defect category matrix
-│       └── 04_operational_details_dashboard.png     # Technician latency and vendor SLA compliance
+│       └── 04_operational_details_dashboard.png     # Technician turnaround and vendor audit outcomes
 ├── pbix/
 │   └── Field_Audit_Analytics.pbix    # Tabular model with embedded cache
 ├── sql/
@@ -101,7 +101,7 @@ field-infrastructure-audit-analytics/
 ### 3. Regional Quality & Defect Analysis Dashboard
 ![Regional Quality and Defect Analysis Dashboard](docs/Screenshots/03_regional_quality_dashboard.png)
 
-### 4. Technician & Vendor Operational SLA Performance
+### 4. Technician Turnaround & Vendor Audit Performance
 ![Operational and Vendor Performance](docs/Screenshots/04_operational_details_dashboard.png)
 
 ---
@@ -112,9 +112,9 @@ field-infrastructure-audit-analytics/
 
 | Req ID | Business Need / Operational Goal | System Specification | Technical Implementation | Business Decision Enabled |
 | :--- | :--- | :--- | :--- | :--- |
-| **REQ-01** | Identify contractors breaching contractual turnarounds | Calculate execution turnaround latency per completed audit | SQL `DATEDIFF` logic + DAX `[Avg Turnaround Days]` | Provides operational visibility to support review and route reallocation |
-| **REQ-02** | Prevent skewed executive reporting from pipeline test data | Isolate automated validation records from production KPIs | SQL View filter `WHERE IsTestRecord = 0` | Unbiased executive KPI auditing ($N=597$ verified audits) |
-| **REQ-03** | Correlate completed field audits against scheduled backlog | Support multiple date vectors against a single calendar table | Inactive relationship on `ScheduledDate` via DAX `USERELATIONSHIP` | Distinguish scheduling backlogs from field capacity delays |
+| **REQ-01** | Compare contractor turnaround performance | Calculate elapsed days between scheduling and audit execution | SQL `DATEDIFF` and DAX `[Avg Turnaround Days]` | Supports operational review and comparison of contractor turnaround |
+| **REQ-02** | Prevent test records from affecting operational KPIs | Exclude records flagged `IsTestRecord = 1` from reporting | SQL view filter `WHERE IsTestRecord = 0` and equivalent Power Query filtering | Reconciled reporting over 597 included non-test audits |
+| **REQ-03** | Compare audit volumes by scheduled and execution dates | Support scheduled-date and audit-date filtering against a shared calendar | Active `AuditDate` relationship and inactive `ScheduledDate` relationship activated with `USERELATIONSHIP` | Supports comparison of scheduling and execution volumes within selected periods |
 | **REQ-04** | Monitor critical field defect concentrations | Aggregate and rank failure modes across regions | Standardized defect taxonomy + defect breakdown visual | Supports preventive maintenance prioritization |
 
 ---
@@ -124,7 +124,7 @@ field-infrastructure-audit-analytics/
 An operational reporting view (`vw_FieldAuditPerformance`) is provided in MySQL, but the Power BI semantic model ingests the normalized relational tables (`fact_audits`, `dim_regions`, `dim_technicians`) directly:
 
 * **Kimball Star Schema Integrity:** Direct ingestion maintains a clean 1:Many single-direction star schema rather than collapsing entities into a single de-normalized table.
-* **VertiPaq Memory Efficiency:** Storing text attributes (`TechnicianName`, `RegionName`) in shallow dimension tables while the fact table holds compact integer foreign keys optimizes dictionary encoding and minimizes cache overhead.
+* **Dimensional Storage Design:** Region and technician descriptions are stored in dimension tables, while the fact table retains integer foreign keys. This supports a compact fact-table design and separate dimension filtering. Compression and query-efficiency benefits are design motivations; no comparative performance benchmark is claimed.
 * **Role-Playing Date Dimensions:** Allows `fact_audits` to maintain an active relationship on `AuditDate` and an inactive relationship on `ScheduledDate` against `dim_date`, enabling dynamic time intelligence via `USERELATIONSHIP`.
 * **Separation of Concerns:** `vw_FieldAuditPerformance` serves ad-hoc SQL users and flat-file exports, while the Power BI model serves multi-dimensional interactive analytics.
 
@@ -175,7 +175,7 @@ INNER JOIN Dim_Technicians t ON a.TechnicianID = t.TechnicianID
 INNER JOIN Dim_Regions r ON a.RegionID = r.RegionID
 WHERE a.IsTestRecord = 0;
 ```
-*(See full implementation in [`sql/01_schema_and_views.sql`](sql/01_schema_and_views.sql))*
+*(See full implementation in [`01_schema_and_views.sql`](01_schema_and_views.sql))*
 
 ---
 
@@ -225,15 +225,15 @@ Scheduled vs Executed Variance = [Audits Scheduled] - [Total Audits]
 ### 1. Multi-Stage Quality Gates
 
 * **Gate 1 — Ingestion & Schema Assertion (Python):** Enforces strict primary key constraints (`AuditID`), lifecycle date-dependency checks, temporal bounds, foreign key referential integrity, and defect completeness prior to CSV export.
-* **Gate 2 — Relational & Referential Integrity (MySQL):** Enforces 3NF foreign key constraints linking `fact_audits` to `dim_technicians` and `dim_regions`, rejecting orphan child records.
-* **Gate 3 — Test Data Isolation (SQL View):** Enforces production isolation rules via `WHERE a.IsTestRecord = 0`, quarantining mock records from operational reporting.
+* **Gate 2 — Relational & Referential Integrity (MySQL):** Defines primary and foreign key constraints linking `Fact_Audits` to `Dim_Technicians` and `Dim_Regions`. Foreign keys enforce valid non-null references; they do not implement a separate quarantine workflow.
+* **Gate 3 — Test Data Isolation (SQL View & Power Query):** Excludes records flagged `IsTestRecord = 1` using the SQL view filter `WHERE a.IsTestRecord = 0` and equivalent Power Query filtering. Test records remain in the source fact table but are excluded from the reporting populations.
 * **Gate 4 — Semantic Reconciliation (Power BI):** Direct-measure verification ensuring semantic aggregations match physical database records ($600 \text{ raw records} - 3 \text{ test records} = 597 \text{ production audits}$).
 
 ---
 
 ### 2. Python Pre-Ingestion Assertions (`src/data_pipeline_and_eda.ipynb`)
 
-Automated assertion checks execute in-memory before CSV serialization to prevent upstream data anomalies:
+Selected assertions from the validation workflow are shown below. The complete executable gate is in `src/data_pipeline_and_eda.ipynb`, including the three-test-record count check. All validation assertions run in memory before CSV export:
 
 ```python
 # Gate 1 Automated Quality Assertions
@@ -261,17 +261,17 @@ assert failed_audits['DefectCategory'].notna().all(), "Non-compliant audit missi
 
 ---
 
-### 3. Data Quality & Integrity Test Matrix (`sql/02_data_quality_tests.sql`)
+### 3. Data Quality & Integrity Test Matrix (`02_data_quality_tests.sql`)
 
 | Test ID | Test Objective / Validation Gate | Verification Logic / SQL Rule | Expected Boundary | Test Result | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **TC-01** | Primary Key Uniqueness & Integrity (`AuditID`) | `SUM(CASE WHEN AuditID IS NULL THEN 1 ELSE 0 END)` and `COUNT(AuditID) - COUNT(DISTINCT AuditID)` | 0 Nulls, 0 Duplicates | 0 Nulls, 0 Duplicates detected | **PASS** |
-| **TC-02** | Status-Date Dependency Integrity | `WHERE StatusCode = 'PENDING' AND AuditDate IS NOT NULL` | 0 Records | 0 Records (31/31 NULL enforced) | **PASS** |
+| **TC-02** | Pending execution-date integrity | `WHERE StatusCode = 'PENDING' AND AuditDate IS NOT NULL` | 0 Violations | 0 violations; all 31 pending records have NULL execution dates | **PASS** |
 | **TC-03** | Turnaround Latency Boundary Gating | `MIN(DATEDIFF)` / `MAX(DATEDIFF)` and violations `< 0` or `> 7` | Min $\ge 0$, Max $\le 7$, 0 Violations | Min: 0d, Max: 7d, 0 Violations | **PASS** |
 | **TC-04** | Referential Integrity (`RegionID`) | `LEFT JOIN Dim_Regions r ... WHERE r.RegionID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
 | **TC-05** | Referential Integrity (`TechnicianID`)| `LEFT JOIN Dim_Technicians t ... WHERE t.TechnicianID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
-| **TC-06** | Test Record Isolation | `WHERE IsTestRecord = 1` in production layer | 0 Test records in view | 3 Quarantined in Fact, 0 Leaked | **PASS** |
-| **TC-07** | Defect Attribution Completeness | `WHERE StatusCode IN ('FAIL','FAILED','REJECTED') AND DefectCategory IS NULL` | 0 Uncategorized defects | 100% defects categorized (160/160) | **PASS** |
+| **TC-06** | Test record exclusion from reporting | Count flagged source records and test whether their AuditIDs appear in `vw_FieldAuditPerformance` | 3 flagged source records; 0 in reporting view | 3 flagged source records; 0 leaked into reporting view | **PASS** |
+| **TC-07** | Defect attribution completeness | Check normalized FAIL/FAILED/REJECTED statuses for NULL, blank or literal 'None' defect categories | 0 unattributed defects | 0 violations across 161 raw non-compliant records; 160 remain after test-record exclusion | **PASS** |
 
 ---
 
@@ -305,13 +305,14 @@ assert failed_audits['DefectCategory'].notna().all(), "Non-compliant audit missi
 2. **Ingest to MySQL & Run QA Test Suite:**
    * Copy the generated CSV files into your MySQL upload directory or project `data/` folder.
    * Verify the file paths in `sql/01_schema_and_views.sql` match your environment.
+   * **Warning — destructive demo reset:** The schema script drops and recreates `Fact_Audits`, `Dim_Technicians`, and `Dim_Regions`, deleting their existing data. Run it only against the disposable demonstration database after preserving any required data. It is not a non-destructive production refresh procedure.
    * Execute schema creation and data loading (dimensions load prior to facts):
      ```bash
-     mysql --local-infile=1 -u root -p < sql/01_schema_and_views.sql
+     mysql --local-infile=1 -u root -p < 01_schema_and_views.sql
      ```
    * Execute the regression test suite:
      ```bash
-     mysql -u root -p < sql/02_data_quality_tests.sql
+     mysql -u root -p < 02_data_quality_tests.sql
      ```
    * Confirm test cases `TC-01` through `TC-07` all return `PASS`.
 3. **Open & Refresh Power BI Model:**
