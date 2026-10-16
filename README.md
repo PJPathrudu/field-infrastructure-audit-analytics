@@ -16,7 +16,7 @@ An end-to-end operational data quality governance, relational data modeling, and
 * **Public Repository:** [field-infrastructure-audit-analytics](https://github.com/PJPathrudu/field-infrastructure-audit-analytics)
 * **Project Role:** Independent Project Developer — Data Quality & Analytics
 * **Project Type:** Independent Professional Portfolio & Applied Engineering Simulation
-* **Nominated Pathways:** ANZSCO 224114 (Data Analyst) & ANZSCO 263211 (ICT Quality Assurance Engineer) & ANZSCO 261111 (ICT BA)
+* **Nominated Pathways:** ANZSCO 224114 (Data Analyst) & ANZSCO 263211 (ICT Quality Assurance Engineer) & ANZSCO 261111 (ICT Business Analyst)
 * **Evidence Classification:** ACS RPL Professional Currency — Category 2 (Attributed Digital Artefact)
 
 > **Scope Note:** This project represents an independent technical portfolio demonstration developed to exhibit competency in data architecture, automated testing assertions, dimensional modeling, and analytical reporting. It is not an employer-commissioned deployment or paid enterprise engagement.
@@ -36,8 +36,8 @@ This analytics platform bridges three core computing domains across simulated fi
 
 All transactional records are synthetically generated using Python (`random.seed(42)` and `numpy.random.seed(42)`) to simulate field audit lifecycles without using proprietary corporate data:
 
-* **Deterministic Reproduction:** Fixed random seeds guarantee identical row outputs across any execution environment.
-* **Operational Integrity:** Audits marked `PENDING` enforce `NULL` execution dates, while completed audits enforce turnaround delays between 0 and 7 days.
+* **Deterministic Reproduction:** Fixed pseudo-random seeds guarantee identical row outputs when evaluated in Python 3.12 environments.
+* **Operational Integrity:** Audits marked `PENDING` strictly enforce `NULL` execution dates, while completed audits enforce turnaround delays between 0 and 7 days.
 * **Quality Assurance Test Cases:** Embeds 3 test records (`IsTestRecord = 1`) to validate downstream data cleansing rules, sanitization gates, and filter integrity.
 
 ---
@@ -55,6 +55,10 @@ Across the production population ($N = 597$ verified non-test audits), the platf
 | **Overall Compliance Rate** | **68.01%** | Computed as `[Compliant Audits] / [Total Audits]` (406 / 597). |
 | **Average Turnaround Latency** | **3.0 Days** | Elapsed interval (`AuditDate - ScheduledDate`) across all executed records. |
 | **Observed Latency Boundary** | **0 to 7 Days** | Strict boundary conformance with zero negative duration anomalies. |
+
+> **Population Reconciliation Note:**
+> * **Raw Ingested Dataset ($N = 600$):** 408 compliant, 161 non-compliant (defective), and 31 pending records.
+> * **Production Reporting Population ($N = 597$):** Excludes 3 flagged test records (`IsTestRecord = 1`). One test record (AuditID: 1045) carried a `FAIL` status; filtering test records yields **406 compliant audits**, **160 defect audits**, and **31 pending reviews** ($406 / 597 = \mathbf{68.01\%}$ compliance).
 
 ---
 
@@ -156,15 +160,19 @@ SELECT
         ELSE 'Unclassified'
     END AS AuditOutcome,
 
-    -- Null defect remediation
-    COALESCE(a.DefectCategory, 'No Defect') AS DefectCategory,
+    -- Defect classification remediation
+    CASE
+        WHEN UPPER(TRIM(a.StatusCode)) IN ('PASS', 'PASSED') AND a.DefectCategory IS NULL THEN 'No Defect'
+        WHEN UPPER(TRIM(a.StatusCode)) IN ('FAIL', 'FAILED', 'REJECTED') AND a.DefectCategory IS NULL THEN 'Missing Classification'
+        ELSE COALESCE(a.DefectCategory, 'No Defect')
+    END AS DefectCategory,
 
     -- Turnaround lag in days (NULL if audit is pending)
     DATEDIFF(a.AuditDate, a.ScheduledDate) AS TurnaroundDays
 
 FROM Fact_Audits a
-INNER JOIN dim_technicians t ON a.TechnicianID = t.TechnicianID
-INNER JOIN dim_regions r ON a.RegionID = r.RegionID
+INNER JOIN Dim_Technicians t ON a.TechnicianID = t.TechnicianID
+INNER JOIN Dim_Regions r ON a.RegionID = r.RegionID
 WHERE a.IsTestRecord = 0;
 ```
 *(See full implementation in [`sql/01_schema_and_views.sql`](sql/01_schema_and_views.sql))*
@@ -216,8 +224,8 @@ Scheduled vs Executed Variance = [Audits Scheduled] - [Total Audits]
 
 ### 1. Multi-Stage Quality Gates
 
-* **Gate 1 — Ingestion & Schema Assertion (Python):** Enforces strict data types, non-null primary keys (`AuditID`), standardized ISO date formats, and bounded execution date intervals.
-* **Gate 2 — Relational & Referential Integrity (MySQL):** Enforces 3NF foreign key constraints linking `fact_audits` to `dim_technicians` and `dim_regions`, quarantining orphan records.
+* **Gate 1 — Ingestion & Schema Assertion (Python):** Enforces strict primary key constraints (`AuditID`), lifecycle date-dependency checks, temporal bounds, foreign key referential integrity, and defect completeness prior to CSV export.
+* **Gate 2 — Relational & Referential Integrity (MySQL):** Enforces 3NF foreign key constraints linking `fact_audits` to `dim_technicians` and `dim_regions`, rejecting orphan child records.
 * **Gate 3 — Test Data Isolation (SQL View):** Enforces production isolation rules via `WHERE a.IsTestRecord = 0`, quarantining mock records from operational reporting.
 * **Gate 4 — Semantic Reconciliation (Power BI):** Direct-measure verification ensuring semantic aggregations match physical database records ($600 \text{ raw records} - 3 \text{ test records} = 597 \text{ production audits}$).
 
@@ -225,19 +233,30 @@ Scheduled vs Executed Variance = [Audits Scheduled] - [Total Audits]
 
 ### 2. Python Pre-Ingestion Assertions (`src/data_pipeline_and_eda.ipynb`)
 
-Automated assertion checks execute before CSV serialization to prevent upstream data anomalies:
+Automated assertion checks execute in-memory before CSV serialization to prevent upstream data anomalies:
 
 ```python
 # Gate 1 Automated Quality Assertions
-assert df_audits['AuditID'].is_unique, "Assertion Failure: Duplicate AuditID detected"
-assert df_audits['AuditID'].notna().all(), "Assertion Failure: Null AuditID detected"
-assert df_audits.loc[df_audits['StatusCode'] == 'PENDING', 'AuditDate'].isna().all(), "Pending audit contains execution date"
+assert df_audits['AuditID'].is_unique, "Assertion Failure: Duplicate AuditID detected!"
+assert df_audits['AuditID'].notna().all(), "Assertion Failure: Null AuditID detected!"
+assert df_audits.loc[df_audits['StatusCode'] == 'PENDING', 'AuditDate'].isna().all(), "Pending audit contains execution date!"
 
-completed = df_audits[df_audits['StatusCode'].isin(['PASS', 'PASSED', 'FAIL', 'FAILED', 'REJECTED'])]
-assert (pd.to_datetime(completed['AuditDate']) >= pd.to_datetime(completed['ScheduledDate'])).all(), "Negative turnaround interval"
+# Enforce non-null execution date on all completed audits
+completed_mask = df_audits['StatusCode'].isin(['PASS', 'PASSED', 'FAIL', 'FAILED', 'REJECTED'])
+assert df_audits[completed_mask & df_audits['AuditDate'].isna()].empty, "Completed audit missing execution date!"
 
-failed = df_audits[df_audits['StatusCode'].isin(['FAIL', 'FAILED', 'REJECTED'])]
-assert failed['DefectCategory'].notna().all(), "Non-compliant audit missing defect category"
+completed_audits = df_audits[completed_mask].copy()
+latencies = (pd.to_datetime(completed_audits['AuditDate']) - pd.to_datetime(completed_audits['ScheduledDate'])).dt.days
+assert (latencies >= 0).all(), "Negative turnaround interval detected!"
+assert (latencies <= 7).all(), "Turnaround exceeded 7-day maximum boundary!"
+
+valid_regions = set(df_regions['RegionID'])
+valid_techs = set(df_techs['TechnicianID'])
+assert df_audits['RegionID'].isin(valid_regions).all(), "Orphan RegionID detected!"
+assert df_audits['TechnicianID'].isin(valid_techs).all(), "Orphan TechnicianID detected!"
+
+failed_audits = df_audits[df_audits['StatusCode'].isin(['FAIL', 'FAILED', 'REJECTED'])]
+assert failed_audits['DefectCategory'].notna().all(), "Non-compliant audit missing defect category!"
 ```
 
 ---
@@ -246,47 +265,56 @@ assert failed['DefectCategory'].notna().all(), "Non-compliant audit missing defe
 
 | Test ID | Test Objective / Validation Gate | Verification Logic / SQL Rule | Expected Boundary | Test Result | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **TC-01** | Primary Key Uniqueness (`AuditID`) | `COUNT(AuditID) - COUNT(DISTINCT AuditID)` | 0 Duplicates | 0 Duplicates detected | **PASS** |
+| **TC-01** | Primary Key Uniqueness & Integrity (`AuditID`) | `SUM(CASE WHEN AuditID IS NULL THEN 1 ELSE 0 END)` and `COUNT(AuditID) - COUNT(DISTINCT AuditID)` | 0 Nulls, 0 Duplicates | 0 Nulls, 0 Duplicates detected | **PASS** |
 | **TC-02** | Status-Date Dependency Integrity | `WHERE StatusCode = 'PENDING' AND AuditDate IS NOT NULL` | 0 Records | 0 Records (31/31 NULL enforced) | **PASS** |
-| **TC-03** | Turnaround Latency Boundary | `WHERE DATEDIFF(AuditDate, ScheduledDate) < 0` | 0 Negative intervals | Min: 0 days, Max: 7 days | **PASS** |
-| **TC-04** | Referential Integrity (`RegionID`) | `LEFT JOIN Dim_Regions ... WHERE r.RegionID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
-| **TC-05** | Referential Integrity (`TechnicianID`)| `LEFT JOIN Dim_Technicians ... WHERE t.TechnicianID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
-| **TC-06** | Test Record Isolation | `WHERE IsTestRecord = 1` in production layer | 0 Test records | 3 records quarantined | **PASS** |
-| **TC-07** | Defect Attribution Completeness | `WHERE StatusCode IN ('FAIL','FAILED','REJECTED') AND DefectCategory IS NULL` | 0 Null defects | 100% defects categorized (160/160) | **PASS** |
+| **TC-03** | Turnaround Latency Boundary Gating | `MIN(DATEDIFF)` / `MAX(DATEDIFF)` and violations `< 0` or `> 7` | Min $\ge 0$, Max $\le 7$, 0 Violations | Min: 0d, Max: 7d, 0 Violations | **PASS** |
+| **TC-04** | Referential Integrity (`RegionID`) | `LEFT JOIN Dim_Regions r ... WHERE r.RegionID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
+| **TC-05** | Referential Integrity (`TechnicianID`)| `LEFT JOIN Dim_Technicians t ... WHERE t.TechnicianID IS NULL` | 0 Orphan records | 0 Orphans detected | **PASS** |
+| **TC-06** | Test Record Isolation | `WHERE IsTestRecord = 1` in production layer | 0 Test records in view | 3 Quarantined in Fact, 0 Leaked | **PASS** |
+| **TC-07** | Defect Attribution Completeness | `WHERE StatusCode IN ('FAIL','FAILED','REJECTED') AND DefectCategory IS NULL` | 0 Uncategorized defects | 100% defects categorized (160/160) | **PASS** |
 
 ---
 
 ### 4. Applied 5-Whys Root Cause Analysis (RCA) Simulation
 
-To demonstrate diagnostic problem-solving competency, recurring simulated field non-compliances are audited using standard 5-Whys methodology:
+> **Methodological Context:** *Illustrative RCA exercise — not a live dataset finding.* This scenario demonstrates how a Quality Assurance Engineer investigates recurring field defects and models problem-solving workflows. Assumed performance figures and failure rates are scenario parameters separate from the project's calculated metrics. Proposed checklist photo-verification controls and latency alerting represent planned CAPA enhancements, not deployed enterprise features.
 
-* **Simulated Problem Statement:** Analytical telemetry indicates Region South exhibited an SLA turnaround failure rate of 18.4% during Q3, with cycle times averaging 6.4 days against the 5.0-day benchmark.
-  1. *Why did turnaround exceed SLA thresholds?* Field inspection completion times averaged 6.4 days against the 5.0-day contract limit.
-  2. *Why were completion times elevated?* High concentration of Severity 1 (`Grounding Missing`) re-inspections saturated technician schedules.
-  3. *Why were grounding defects clustering?* Subcontractor installation teams in Region South omitted secondary grounding torquing.
+* **Scenario Problem Statement:** A simulated regional cluster exhibits recurring turnaround latency breaches exceeding target operational thresholds during quarterly field evaluations.
+  1. *Why did turnaround exceed benchmark thresholds?* Field inspection re-evaluations created technician dispatch backlogs.
+  2. *Why were re-evaluations elevated?* High concentration of initial mounting defects required secondary verification visits.
+  3. *Why were grounding defects clustering?* Subcontractor installation teams in the cluster omitted secondary busbar torquing during initial hardware mounting.
   4. *Why was torquing omitted?* The field dispatch instructions lacked a mandatory torque-wrench calibration checkpoint.
-  5. *Why was the checkpoint missing?* Commissioning standard SOP-204 had not been updated following the latest hardware specification release.
+  5. *Why was the checkpoint missing?* Commissioning documentation had not incorporated hardware revision updates.
 * **Proposed Corrective & Preventive Action (CAPA):**
   * *Proposed Workflow Remediation:* Introduce a mandatory digital checklist and photo-verification gate into the field inspection mobile workflow requiring torque-wrench calibration sign-off prior to task closure.
-  * *Preventive Monitoring Prototype:* Utilize the Power BI analytical model (`[Avg Turnaround Days]`) to establish automated threshold monitoring, visually flagging any regional cluster exceeding 4.5 days for immediate operational review.
+  * *Proposed Monitoring Prototype:* Utilize the Power BI analytical model (`[Avg Turnaround Days]`) to establish automated threshold monitoring, visually flagging any regional cluster exceeding 4.5 days for immediate operational review.
 
 ---
 
 ## Reproduction Guide
 
+### Environment Prerequisites
+* **Python:** 3.10+ (tested on Python 3.12) with `pandas` and `numpy`.
+* **Database:** MySQL Server 8.0 with `local_infile = 1` enabled on server and client.
+* **BI Platform:** Power BI Desktop (Windows) with MySQL Connector/NET installed.
+
+### Execution Sequence
 1. **Generate Data & Run Assertions:**
-   ```bash
-   cd src/
-   jupyter notebook data_pipeline_and_eda.ipynb
-   # Run all cells to verify Gate 1 assertions and export fresh CSV files
-   ```
-2. **Execute MySQL Relational Build & Test Matrix:**
-   ```bash
-   mysql -u root -p < sql/01_schema_and_views.sql
-   mysql -u root -p < sql/02_data_quality_tests.sql
-   # Verify TC-01 through TC-07 return 'PASS'
-   ```
+   * Open `src/data_pipeline_and_eda.ipynb` and execute all cells.
+   * Confirm Gate 1 pre-ingestion assertions pass in Cell 6 before Cell 7 exports the sanitized CSV files (`dim_regions.csv`, `dim_technicians.csv`, `fact_audits.csv`).
+2. **Ingest to MySQL & Run QA Test Suite:**
+   * Copy the generated CSV files into your MySQL upload directory or project `data/` folder.
+   * Verify the file paths in `sql/01_schema_and_views.sql` match your environment.
+   * Execute schema creation and data loading (dimensions load prior to facts):
+     ```bash
+     mysql --local-infile=1 -u root -p < sql/01_schema_and_views.sql
+     ```
+   * Execute the regression test suite:
+     ```bash
+     mysql -u root -p < sql/02_data_quality_tests.sql
+     ```
+   * Confirm test cases `TC-01` through `TC-07` all return `PASS`.
 3. **Open & Refresh Power BI Model:**
    * Open `pbix/Field_Audit_Analytics.pbix` in Power BI Desktop.
-   * Click **Refresh** on the Home ribbon to pull from the database.
+   * Click **Refresh** on the Home ribbon to pull from the MySQL instance.
    * Confirm executive cards show: **597 Audits**, **68.01% Compliance**, **160 Defects**, and **3.0 Turnaround Days**.
