@@ -71,7 +71,6 @@ field-infrastructure-audit-analytics/
 │   ├── dim_technicians.csv           # Technician & vendor dimension (5 records)
 │   └── fact_audits.csv               # Reconciled audit transactions (600 records)
 ├── docs/
-│   ├── Category2_Currency_Dossier.pdf # 5-page compiled professional currency verification dossier
 │   └── Screenshots/                  # Architecture & visual reporting evidence
 │       ├── 01_star_schema_model.png   # Tabular star schema model relationships
 │       ├── 02_executive_overview_dashboard.png # Executive KPI overview (68.01% compliance / 160 defects)
