@@ -305,7 +305,7 @@ Run the terminal commands below from the repository root (`field-infrastructure-
    * Confirm Gate 1 pre-ingestion assertions pass in Cell 6 before Cell 7 exports the sanitized CSV files (`dim_regions.csv`, `dim_technicians.csv`, `fact_audits.csv`).
 2. **Ingest to MySQL & Run QA Test Suite:**
    * Copy the generated CSV files into your MySQL upload directory or project `data/` folder.
-   * Verify the file paths in `sql/01_schema_and_views.sql` match your environment.
+   * The loader uses repository-relative paths (`data/…`), so run the next command from the root of the clone. No path editing is required.
    * **Warning — destructive demo reset:** The schema script drops and recreates `Fact_Audits`, `Dim_Technicians`, and `Dim_Regions`, deleting their existing data. Run it only against the disposable demonstration database after preserving any required data. It is not a non-destructive production refresh procedure.
    * Execute schema creation and data loading (dimensions load prior to facts):
      ```bash
