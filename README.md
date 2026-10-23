@@ -76,7 +76,7 @@ field-infrastructure-audit-analytics/
 │       ├── 02_executive_overview_dashboard.png # Executive KPI overview (68.01% compliance / 160 defects)
 │       ├── 03_regional_quality_dashboard.png    # Regional compliance & defect category matrix
 │       └── 04_operational_details_dashboard.png     # Technician turnaround and vendor audit outcomes
-├── pbix/
+├── power bi/
 │   └── Field_Audit_Analytics.pbix    # Tabular model with embedded cache
 ├── sql/
 │   ├── 01_schema_and_views.sql       # DDL, bulk loading, and operational views
@@ -316,6 +316,6 @@ Run the terminal commands below from the repository root (`field-infrastructure-
      ```
    * Confirm test cases `TC-01` through `TC-07` all return `PASS`.
 3. **Open & Refresh Power BI Model:**
-   * Open `pbix/Field_Audit_Analytics.pbix` in Power BI Desktop.
+   * Open `power bi/Field_Audit_Analytics.pbix` in Power BI Desktop.
    * Click **Refresh** on the Home ribbon to pull from the MySQL instance.
    * Confirm executive cards show: **597 Audits**, **68.01% Compliance**, **160 Defects**, and **3.0 Turnaround Days**.
